@@ -1,52 +1,52 @@
-# Project BIO580 - Binary Detectability in MR Reconstruction
+# Project BIO486 - Physics Based model in MR Reconstruction
 
-Magnetic Resonance Imaging (MRI) provides detailed anatomical images, but acquiring high-quality images can be time-consuming. Acceleration techniques that skip k-space lines are commonly used to reduce acquisition time, but this leads to image artifacts and loss of diagnostic information.
+Magnetic Resonance Imaging (MRI) is a vital diagnostic tool used to capture detailed internal images of the human body. However, acquiring high-quality images can be time-consuming. To accelerate the process, certain lines in the k-space data are skipped beyond the Nyquist limit, which reduces scan time but introduces artifacts that degrade image quality.
 
-This project explores binary detectability in undersampled MRI reconstructions using Hotelling Observer (HO) and Channelized Hotelling Observer (CHO) models. The focus is to evaluate how acceleration, noise, and lesion characteristics affect the ability to detect small structures in reconstructed images—going beyond traditional metrics such as SSIM and MSE.
+This project explores a physics-based unrolled approach to reconstruct missing k-space data and improve image quality. It focuses on the case where only 25\% of the k-space lines are collected to speed up MRI scans. The method uses both the undersampled k-space data and the corresponding fully reconstructed images in a training loop that combines the physical principles of MRI with deep learning. The goal is to train a model that can convert the incomplete k-space data into a consistent, fully reconstructed image.
 
 ---
 
-## 🔬 Problem Setup
+## 🔬 Goal of the project
 
-We simulate elliptical lesions embedded in background patches to model signal-present and signal-absent conditions under varying intensity of the lesion, noise and acceleration levels.
+This project combines both classical and deep learning approaches to leverage the strengths of each. A classical iterative algorithm is used to enforce consistency in the final reconstruction and reduce inconsistent noise, while a deep learning model enhances the visual quality of the reconstructed image. The project covers several key components: simulating undersampled data with a 4 times acceleration factor, implementing an iterative reconstruction algorithm, developing a convolutional neural network (CNN), and building a unified unrolling loop that integrates both approaches. Finally, the report presents the results of the reconstruction process.
 
-### Hypotheses
+### Mathematical formulation.
 
-- **Signal Present (H₁):**
-g₁ = H(f_s + f_b) + n
-- **Signal Absent (H₂):**
-g₂ = H(f_b) + n
+This is the way that a inverse problem is solve with L1 regularization.
+
+f(x) = \min \| s - E x \|_2^2 + \lambda \| x \|_1
+
+If we solve for x the equation above using a itertive solution, we got the following aproximation.
+
+c_{k+1} = T_\lambda \left( (I - \alpha E^T E) c_k + \alpha E^T s \right)
+
+If we replace T_\lambda in the equation above for a UNET. You got the unrolled physics base model.
+
+c_{k+1} = T_\lambda \left( (I - \alpha E^T E) c_k + \alpha E^T s \right)
+
+In addition, for training purpose we need to consider that the loss function is given by the following formula.
+
+\min_{\theta} \sum_{i = 1}^{n_{\text{data}}} \left| U_{\theta}(\hat{m}_{\text{zf,us,cs}}^{(i)}) - m_{\text{gt}}^{(i)} \right|^2
 
 Where:
-- `f_s`: signal (elliptical lesion)  
-- `f_b`: background  (images)
-- `n`: additive noise  (gaussina correlate noise)
-- `H`: reconstruction operator (reconstruction)  
-
+- `zf`: ZeroFill (Zerofill reconstructed images)  
+- `us`: UnderSampling (k-space data)
+- `cs`: Coil Sensitivity image
+- `gt`: ground true  
 ---
 
-## 🧠 Hotelling Observer
-
-The Hotelling observer template is defined as: W_hot = [0.5 * (K₁ + K₂)]⁻¹ · (E[g₁] - E[g₂])
-
-- `K₁`, `K₂`: Covariance matrices under hypotheses H₁ and H₂  
-- `E[g₁]`, `E[g₂]`: Mean vectors of signal-present and signal-absent images
-
-The test statistic for a given patch `g` is: t_hot = W_hotᵀ · g
-
-This allows us to compute the **AUC** and evaluate detectability performance across varying conditions.
-
----
 
 ## 📦 Project Structure
 
-| Module                      | Description                                                                          |
-|----------------------------|---------------------------------------------------------------------------------------|
-| `HO_save_preprocesing'     | Simulates signal-present/absent/reference patches with varying noise and acceleration |
-| `CHO_HO_Calculation`       | Calculate AUC for hotelling and chanelizing hoteling observer                         |
-| `CHO_HO_Channels_effect'   | Visualize the effect of moving parameters in the gambor chaneel for CHO               |
-| `HO_exploration`           | Explore the lesion formation and different condition in the parameters                |
-| `Utils`                    | Provid useful function for the process                                                |
+| Module                      | Description                                                                          
+|------------------------------|----------------------------------------------------------------------------------------|
+| `Exploring_data'             | Show the exploration of the operations implementet in the physics module               |
+| `Preprocesing_Unrolled`      | Show preprocesing steps to obtein 4 subfolders for zf, us, cs and gt                   |
+| `Unrolled_model_final_Local' | Show the implementation of the physics base model in a small dataset step by step      |
+| `Unrolled_model_final_Server`| Show a implementation the future implementation with larger data, but it is still under|       
+                               | construction                                                                           | 
+| `Utils2`                     | Show the final helpers of the netwok. You can find: Custom_dataset, Sampling functions,|
+                               | Physics_module, deep_learning_module, and utils functions.                             |
 
 ---
 
@@ -56,8 +56,6 @@ While traditional metrics like:
 
 - **MSE** – Average pixel-wise error  
 - **SSIM** – Structural Similarity Index
-- **AUC_HO** - AUC for hotelling observer
-- **AUC_CHO** - AUC for hotelling observer
   
 are included, this project emphasizes **task-based** metrics like AUC derived from observer models, which are more aligned with clinical goals.
 
